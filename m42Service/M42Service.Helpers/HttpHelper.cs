@@ -10,6 +10,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace M42Service.Helpers
 {
@@ -45,8 +46,7 @@ namespace M42Service.Helpers
                 Content = new FormUrlEncodedContent(body)
             };
 
-            requestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-           
+            requestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue(" application/x-www-form-urlencoded");
 
 
             _logger.WriteToLogFile(ActionTypeEnum.Information, $"Sending POST request to URL: {url}");
@@ -61,7 +61,7 @@ namespace M42Service.Helpers
             return response;
         }
 
-        public static HttpResponseMessage UpdatePost<Tin>(string url, Tin body)
+        public static HttpResponseMessage UpdatePost<Tin>(string url, Tin body, string token)
         {
             var requestMessage = new HttpRequestMessage
             {
@@ -70,7 +70,9 @@ namespace M42Service.Helpers
                 Content = JsonContent.Create(body)
             };
 
-            requestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
+            requestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
 
 

@@ -54,8 +54,9 @@ namespace M42Service.DSL
                 templsteId = "Test1234"
                 
             };
+            var token = "";
 
-            var responseMessage = HttpHelper.UpdatePost<UpdateRequestDto>(url, body);
+            var responseMessage = HttpHelper.UpdatePost<UpdateRequestDto>(url, body,token);
 
         }
 

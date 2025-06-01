@@ -11,10 +11,7 @@ namespace m42Service.Helpers
             _configuration = IConfiguration;
             LogPath = GetKey<string>("LogPath");
             //ConnectionStringLdm = GetKey<string>("ConnectionStringLdm", true);
-            //ConnectionStringClinics = GetKey<string>("ConnectionStringClinics", true);
             LdmStartTime = GetKey<int>("Ldm_startAfterSeconds");
-            //VMsStartTime = GetKey<int>("VmsStartTime");
-            //PrescriptionStartTime = GetKey<int>("PrescriptionStartTime");
             IntervalTime = GetKey<int>("Ldm_intervalInSeconds");
             //PackageName = GetKey<string>("PackageName");
             //UserName = GetKey<string>("UserName");
