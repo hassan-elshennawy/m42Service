@@ -1,5 +1,4 @@
-﻿using AdafcaJahizyaService.Helpers;
-using M42Service.Helpers;
+﻿using M42Service.Helpers;
 using m42Service.Helpers;
 using System;
 using System.Collections.Generic;
@@ -54,6 +53,8 @@ namespace M42Service.DSL
                 templsteId = "Test1234"
                 
             };
+
+            // will get it from the auth function
             var token = "";
 
             var responseMessage = HttpHelper.UpdatePost<UpdateRequestDto>(url, body,token);

@@ -1,5 +1,4 @@
-﻿using AdafcaJahizyaService.Helpers;
-using m42Service.Helpers;
+﻿using m42Service.Helpers;
 using M42Service.DSL;
 using Timer = System.Timers.Timer;
 
@@ -36,7 +35,7 @@ namespace m42Service.DSL
 
         private Timer InitTimer(Action timerProcess, int startAfterSeconds, double intervalInSeconds)
         {
-            var timer = new Timer()
+             var timer = new Timer()
             {
                 Enabled = true,
                 Interval = startAfterSeconds * 1000
