@@ -2,14 +2,18 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace m42Service.M42Service.Entities
+namespace m42Service.Entities
 {
-    internal class UpdateRequestDto
+    public class UpdateRequestDto
     {
-        public string pdf {  get; set; }
-        public Data data;
-        public string templsteId { get; set; }
+        [JsonPropertyName("pdf")]
+        public string Pdf {  get; set; }
+        [JsonPropertyName("data")]
+        public Data Data { get; set; }
+        [JsonPropertyName("templateId")]
+        public string TemplsteId { get; set; }
     }
 }

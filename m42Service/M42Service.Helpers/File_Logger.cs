@@ -24,10 +24,10 @@ namespace m42Service.Helpers
         public static File_Logger GetInstance(string? subFolderLogName = null)
         {
 
-            if (string.IsNullOrWhiteSpace(subFolderLogName))
+           /* if (string.IsNullOrWhiteSpace(subFolderLogName))
             {
                 subFolderLogName = "General";
-            }
+            }*/
 
             lock (_loggerDictionary)
             {

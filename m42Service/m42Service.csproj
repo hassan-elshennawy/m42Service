@@ -9,15 +9,21 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="M42Service.DAL\" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <Reference Include="NT.Integration.SharedKernel.Helper">
+      <HintPath>..\..\dotnetIntern\Shalaby labs collect DLLs\Shalaby labs collect DLLs\NT.Integration.SharedKernel.Helper.dll</HintPath>
+    </Reference>
+    <Reference Include="NT.Integration.SharedKernel.OracleManagedHelper">
+      <HintPath>..\..\dotnetIntern\Shalaby labs collect DLLs\Shalaby labs collect DLLs\NT.Integration.SharedKernel.OracleManagedHelper.dll</HintPath>
+    </Reference>
     <Reference Include="NT.Integration.Shield">
       <HintPath>..\..\dotnetIntern\Shalaby labs collect DLLs\Shalaby labs collect DLLs\NT.Integration.Shield.dll</HintPath>
+    </Reference>
+    <Reference Include="Oracle.ManagedDataAccess">
+      <HintPath>..\..\dotnetIntern\Shalaby labs collect DLLs\Shalaby labs collect DLLs\Oracle.ManagedDataAccess.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>

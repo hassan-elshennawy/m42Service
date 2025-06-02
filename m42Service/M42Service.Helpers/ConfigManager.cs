@@ -10,12 +10,10 @@ namespace m42Service.Helpers
         {
             _configuration = IConfiguration;
             LogPath = GetKey<string>("LogPath");
-            //ConnectionStringLdm = GetKey<string>("ConnectionStringLdm", true);
+
             LdmStartTime = GetKey<int>("Ldm_startAfterSeconds");
             IntervalTime = GetKey<int>("Ldm_intervalInSeconds");
-            //PackageName = GetKey<string>("PackageName");
-            //UserName = GetKey<string>("UserName");
-            //Password = GetKey<string>("Password");
+
             UpdateApi = GetKey<string>("update_url");
             TokenApi = GetKey<string>("token_url");
 
@@ -23,22 +21,16 @@ namespace m42Service.Helpers
             ClientAuthMethod = GetKey<string>("client_authentication_method");
             ClientSecret = GetKey<string>("client_secret");
             ClientId = GetKey<int>("client_id");
+            ConnectionStringLdm = GetKey<string>("ConnectionStringLdm", true);
 
 
         }
+        public string ConnectionStringLdm { get; }
         public string LogPath { get; }
-        //public string ConnectionStringLdm { get; }
-        //public string ConnectionStringClinics { get; }
-        //public string PackageName { get; set; }
-        //public string UserName { get; }
-        //public string Password { get; }
         public string UpdateApi { get; }
         public string TokenApi { get; }
         public int LdmStartTime { get; }
-        //public int VMsStartTime { get; }
-       // public int PrescriptionStartTime { get; }
         public int IntervalTime { get; }
-
         public string GrantType { get; set; }
         public string ClientAuthMethod { get; set; }
         public string ClientSecret { get; set; }

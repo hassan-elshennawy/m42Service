@@ -70,7 +70,7 @@ namespace m42Service.DSL
                 {
                     Stop(timer);
                 }
-                timersList.Clear();
+                timersList.Clear(); 
             }
             catch (Exception ex)
             {

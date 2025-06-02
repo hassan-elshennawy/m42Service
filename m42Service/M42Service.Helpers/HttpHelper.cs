@@ -46,7 +46,7 @@ namespace M42Service.Helpers
                 Content = new FormUrlEncodedContent(body)
             };
 
-            requestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue(" application/x-www-form-urlencoded");
+            requestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
 
 
             _logger.WriteToLogFile(ActionTypeEnum.Information, $"Sending POST request to URL: {url}");

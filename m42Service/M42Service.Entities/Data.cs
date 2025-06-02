@@ -2,14 +2,18 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace m42Service.M42Service.Entities
+namespace m42Service.Entities
 {
-    internal class Data
+    public class Data
     {
-        public string name {  get; set; }
-        public DateOnly dob { get; set; }
-        public string mrn { get; set; }
+        [JsonPropertyName("name")]
+        public string Name {  get; set; }
+        [JsonPropertyName("dob")]
+        public DateOnly Dob { get; set; }
+        [JsonPropertyName("mrn")]
+        public string Mrn { get; set; }
     }
 }
