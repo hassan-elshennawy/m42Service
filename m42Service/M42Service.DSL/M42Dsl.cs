@@ -65,86 +65,110 @@ namespace M42Service.DSL
             UpdateRequestDto body = new UpdateRequestDto();
             AuthResponseWrapper authResponseWrapper = new AuthResponseWrapper();
             int seqNumber = 0;
+            SetAttachmentDto attachmentDto = new SetAttachmentDto();
 
-            try
+            using (var oracleManager = new OracleManager(_configuration.ConnectionStringLdm))
             {
-                using (var oracleManager = new OracleManager(_configuration.ConnectionStringLdm))
+                try
                 {
-                    _logger.WriteToLogFile(ActionTypeEnum.Information, "Opening Oracle connection to retrieve LDM records.");
+                    _logger.WriteToLogFile(ActionTypeEnum.Information, "Opening Oracle connection.");
                     await oracleManager.OpenConnectionAsync();
-                    var dataTable = _m42DAL.GetAttachment(oracleManager);
-                    _logger.WriteToLogFile(ActionTypeEnum.Information, $"Retrieved {dataTable.Rows.Count} rows from the database.");
-                    string rawJson = dataTable.Rows[0]["P_JSON"]?.ToString();
-                    seqNumber = (int)dataTable.Rows[0]["P_Seq_num"];
-                    body = JsonSerializer.Deserialize<UpdateRequestDto>(rawJson);
-                    _logger.WriteToLogFile(ActionTypeEnum.Information, "Closing Oracle connection after retrieving LDM records.");
-                    oracleManager.CloseConnection();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.WriteToLogFile(ActionTypeEnum.Exception, $"Exception occurred while retrieving LDM records: {ex}");
-            }
-            
-            string token = string.Empty;
-            authResponseWrapper = processAuthReq().Result;
-            if (authResponseWrapper.IsSuccess)
-            {
-                token = authResponseWrapper.Success.Access_token;
-                _logger.WriteToLogFile(ActionTypeEnum.Information, $"got the token successfully: {token}");
-            }
-            else
-            {
-                _logger.WriteToLogFile(ActionTypeEnum.Information, $"error while getting token: {authResponseWrapper.Error.Error}");
-            }
 
-             var responseMessage = HttpHelper.UpdatePost<UpdateRequestDto>(url, body, token);
-            var content = await responseMessage.Content.ReadAsStringAsync();
-            if (responseMessage.IsSuccessStatusCode)
-            {
-                UpdateSuccessResponseDto updateSuccessResponseDto = JsonSerializer.Deserialize<UpdateSuccessResponseDto>(content);
-                SetAttachmentDto attachmentDto = new SetAttachmentDto
-                {
-                    ModifiedPdf = updateSuccessResponseDto.ModifiedPdf,
-                    SeqNumber = seqNumber,
-                    Status = 1
-                };
-                _logger.WriteToLogFile(ActionTypeEnum.Information, "update process succeed.");
-                try
-                {
-                    using (var oracleManager = new OracleManager(_configuration.ConnectionStringLdm))
+                    // Retrieve data from database
+                    try
                     {
-                        await oracleManager.OpenConnectionAsync();
+                        _logger.WriteToLogFile(ActionTypeEnum.Information, "Retrieving LDM records.");
+                        var dataTable = _m42DAL.GetAttachment(oracleManager);
+                        _logger.WriteToLogFile(ActionTypeEnum.Information, $"Retrieved {dataTable.Rows.Count} rows from the database.");
+
+                        string rawJson = dataTable.Rows[0]["P_JSON"]?.ToString();
+                        seqNumber = (int)dataTable.Rows[0]["P_Seq_num"];
+                        body = JsonSerializer.Deserialize<UpdateRequestDto>(rawJson);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.WriteToLogFile(ActionTypeEnum.Exception, $"Exception occurred while retrieving LDM records: {ex}");
+                        return; // Exit if we can't get the initial data
+                    }
+
+                    // Get authentication token
+                    string token = string.Empty;
+                    authResponseWrapper = await processAuthReq();
+                    if (authResponseWrapper.IsSuccess)
+                    {
+                        token = authResponseWrapper.Success.Access_token;
+                        _logger.WriteToLogFile(ActionTypeEnum.Information, $"got the token successfully: {token}");
+                    }
+                    else
+                    {
+                        _logger.WriteToLogFile(ActionTypeEnum.Information, $"error while getting token: {authResponseWrapper.Error.Error}");
+
+                        attachmentDto = new SetAttachmentDto
+                        {
+                            SeqNumber = seqNumber,
+                            Status = 2 // Error status
+                        };
+
+                        try
+                        {
+                            _m42DAL.SetAttachment(oracleManager, attachmentDto);
+                            _logger.WriteToLogFile(ActionTypeEnum.Information, "Updated database with auth error status.");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.WriteToLogFile(ActionTypeEnum.Exception, $"Exception occurred while updating database after auth error: {ex}");
+                        }
+                        return;
+                    }
+
+                    // Make API call
+                    var responseMessage = HttpHelper.UpdatePost<UpdateRequestDto>(url, body, token);
+                    var content = await responseMessage.Content.ReadAsStringAsync();
+
+
+                    if (responseMessage.IsSuccessStatusCode)
+                    {
+                        // Success case
+                        UpdateSuccessResponseDto updateSuccessResponseDto = JsonSerializer.Deserialize<UpdateSuccessResponseDto>(content);
+                        attachmentDto = new SetAttachmentDto
+                        {
+                            ModifiedPdf = updateSuccessResponseDto.ModifiedPdf,
+                            SeqNumber = seqNumber,
+                            Status = 1
+                        };
+                        _logger.WriteToLogFile(ActionTypeEnum.Information, "update process succeed.");
+                    }
+                    else
+                    {
+                        // Error case
+                        UpdateErrorResponseDto updateErrorResponseDto = JsonSerializer.Deserialize<UpdateErrorResponseDto>(content);
+                        attachmentDto = new SetAttachmentDto
+                        {
+                            SeqNumber = seqNumber,
+                            Status = 2
+                        };
+                        _logger.WriteToLogFile(ActionTypeEnum.Exception, $"error with status code {updateErrorResponseDto.ErrorStatusCode} and message {updateErrorResponseDto.ErrorMessage}");
+                    }
+
+
+                    try
+                    {
                         _m42DAL.SetAttachment(oracleManager, attachmentDto);
-                        oracleManager.CloseConnection();
+                        _logger.WriteToLogFile(ActionTypeEnum.Information, "Database updated successfully with final status.");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.WriteToLogFile(ActionTypeEnum.Exception, $"Exception occurred while updating database with final status: {ex}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.WriteToLogFile(ActionTypeEnum.Exception, $"Exception occurred while retrieving LDM records: {ex}");
+                    _logger.WriteToLogFile(ActionTypeEnum.Exception, $"Unexpected exception in processUpdatehReq: {ex}");
                 }
-            }
-            else
-            {
-                UpdateErrorResponseDto updateErrorResponseDto = JsonSerializer.Deserialize<UpdateErrorResponseDto>(content);
-                SetAttachmentDto attachmentDto = new SetAttachmentDto
+                finally
                 {
-                    SeqNumber = seqNumber,
-                    Status = 2
-                };
-                _logger.WriteToLogFile(ActionTypeEnum.Exception, $"error with status code {updateErrorResponseDto.ErrorStatusCode} and message {updateErrorResponseDto.ErrorMessage}");
-                try
-                {
-                    using (var oracleManager = new OracleManager(_configuration.ConnectionStringLdm))
-                    {
-                        await oracleManager.OpenConnectionAsync();
-                        _m42DAL.SetAttachment(oracleManager, attachmentDto);
-                        oracleManager.CloseConnection();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.WriteToLogFile(ActionTypeEnum.Exception, $"Exception occurred while retrieving LDM records: {ex}");
+                    _logger.WriteToLogFile(ActionTypeEnum.Information, "Closing Oracle connection.");
+                    oracleManager.CloseConnection();
                 }
             }
         }
