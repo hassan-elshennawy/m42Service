@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -58,13 +59,15 @@ namespace M42Service.DSL
 
             return wrapper;
         }
+
+
         public async Task processUpdatehReq()
         {
             _logger.WriteToLogFile(ActionTypeEnum.Information, "update process started.");
             var url = _configuration.UpdateApi;
             UpdateRequestDto body = new UpdateRequestDto();
             AuthResponseWrapper authResponseWrapper = new AuthResponseWrapper();
-            int seqNumber = 0;
+            int seqNumber;
             SetAttachmentDto attachmentDto = new SetAttachmentDto();
 
             using (var oracleManager = new OracleManager(_configuration.ConnectionStringLdm))
@@ -89,7 +92,7 @@ namespace M42Service.DSL
                     {
                         _logger.WriteToLogFile(ActionTypeEnum.Exception, $"Exception occurred while retrieving LDM records: {ex}");
                         return; // Exit if we can't get the initial data
-                    }
+                    } 
 
                     // Get authentication token
                     string token = string.Empty;
@@ -125,29 +128,15 @@ namespace M42Service.DSL
                     var responseMessage = HttpHelper.UpdatePost<UpdateRequestDto>(url, body, token);
                     var content = await responseMessage.Content.ReadAsStringAsync();
 
-
                     if (responseMessage.IsSuccessStatusCode)
                     {
-                        // Success case
-                        UpdateSuccessResponseDto updateSuccessResponseDto = JsonSerializer.Deserialize<UpdateSuccessResponseDto>(content);
-                        attachmentDto = new SetAttachmentDto
-                        {
-                            ModifiedPdf = updateSuccessResponseDto.ModifiedPdf,
-                            SeqNumber = seqNumber,
-                            Status = 1
-                        };
-                        _logger.WriteToLogFile(ActionTypeEnum.Information, "update process succeed.");
+                        // Handle success cases
+                        attachmentDto = HandleSuccessResponse(responseMessage, content, seqNumber);
                     }
                     else
                     {
-                        // Error case
-                        UpdateErrorResponseDto updateErrorResponseDto = JsonSerializer.Deserialize<UpdateErrorResponseDto>(content);
-                        attachmentDto = new SetAttachmentDto
-                        {
-                            SeqNumber = seqNumber,
-                            Status = 2
-                        };
-                        _logger.WriteToLogFile(ActionTypeEnum.Exception, $"error with status code {updateErrorResponseDto.ErrorStatusCode} and message {updateErrorResponseDto.ErrorMessage}");
+                        // Handle error cases
+                        attachmentDto = HandleErrorResponse(responseMessage, content, seqNumber);
                     }
 
 
@@ -173,5 +162,129 @@ namespace M42Service.DSL
             }
         }
 
+
+        private SetAttachmentDto HandleSuccessResponse(HttpResponseMessage responseMessage, string content, int seqNumber)
+        {
+            // Handle status codes that typically don't return content
+            if (responseMessage.StatusCode == HttpStatusCode.NoContent ||
+                responseMessage.StatusCode == HttpStatusCode.ResetContent ||
+                string.IsNullOrWhiteSpace(content))
+            {
+                _logger.WriteToLogFile(ActionTypeEnum.Information,
+                    $"Update process succeeded with status code {responseMessage.StatusCode}. No content returned.");
+
+                return new SetAttachmentDto
+                {
+                    SeqNumber = seqNumber,
+                    Status = 1,
+                    ModifiedPdf = null
+                };
+            }
+
+            // Try to deserialize as expected success DTO
+            try
+            {
+                UpdateSuccessResponseDto updateSuccessResponseDto = JsonSerializer.Deserialize<UpdateSuccessResponseDto>(content);
+
+                // Check if deserialization resulted in null or if required properties are missing
+                if (updateSuccessResponseDto == null)
+                {
+                    _logger.WriteToLogFile(ActionTypeEnum.Exception,
+                        "Deserialization returned null object. Treating as success with no data.");
+
+                    return new SetAttachmentDto
+                    {
+                        SeqNumber = seqNumber,
+                        Status = 1,
+                        ModifiedPdf = null
+                    };
+                }
+
+                _logger.WriteToLogFile(ActionTypeEnum.Information, "Update process succeeded with response data.");
+
+                return new SetAttachmentDto
+                {
+                    ModifiedPdf = updateSuccessResponseDto.ModifiedPdf, // This could be null, which is fine
+                    SeqNumber = seqNumber,
+                    Status = 1
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.WriteToLogFile(ActionTypeEnum.Exception,
+                    $"Unexpected error processing success response: {ex.Message}. Raw content: {content}");
+
+                return new SetAttachmentDto
+                {
+                    SeqNumber = seqNumber,
+                    Status = 1, // Still mark as success since API call succeeded
+                    ModifiedPdf = null
+                };
+            }
+        }
+
+
+
+        // Helper method for error responses
+        private SetAttachmentDto HandleErrorResponse(HttpResponseMessage responseMessage, string content, int seqNumber)
+        {
+            // If no content, log the status code and return error
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                _logger.WriteToLogFile(ActionTypeEnum.Exception,
+                    $"API call failed with status code {responseMessage.StatusCode} and no content.");
+
+                return new SetAttachmentDto
+                {
+                    SeqNumber = seqNumber,
+                    Status = 2
+                };
+            }
+
+            // Try to deserialize as expected error DTO
+            try
+            {
+                UpdateErrorResponseDto updateErrorResponseDto = JsonSerializer.Deserialize<UpdateErrorResponseDto>(content);
+
+                if (updateErrorResponseDto == null)
+                {
+                    _logger.WriteToLogFile(ActionTypeEnum.Exception,
+                        $"API call failed with status code {responseMessage.StatusCode}. Could not parse error response.");
+                }
+                else
+                {
+                    _logger.WriteToLogFile(ActionTypeEnum.Exception,
+                        $"API error with status code {updateErrorResponseDto.ErrorStatusCode} and message {updateErrorResponseDto.ErrorMessage}");
+                }
+
+                return new SetAttachmentDto
+                {
+                    SeqNumber = seqNumber,
+                    Status = 2
+                };
+            }
+            catch (JsonException jsonEx)
+            {
+                _logger.WriteToLogFile(ActionTypeEnum.Exception,
+                    $"API call failed with status code {responseMessage.StatusCode}. Could not deserialize error response: {jsonEx.Message}. Raw content: {content}");
+
+                return new SetAttachmentDto
+                {
+                    SeqNumber = seqNumber,
+                    Status = 2
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.WriteToLogFile(ActionTypeEnum.Exception,
+                    $"API call failed with status code {responseMessage.StatusCode}. Unexpected error: {ex.Message}. Raw content: {content}");
+
+                return new SetAttachmentDto
+                {
+                    SeqNumber = seqNumber,
+                    Status = 2
+                };
+            }
+        }
     }
 }
